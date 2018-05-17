@@ -15,6 +15,9 @@
 #define WINDOWS_WIDTH 1024
 #define WINDOWS_HEIGHT 720
 
+#define VIEWPORT_RATIO (16.0 / 9.0)
+#define VIEWPORT_ASPECT 50.0
+
 #define TIRES_TURNING_ANGLE 15
 #define TIRES_ROTATION_SPEED (float)10.0 / (float)30.0
 #define CAR_TURNING_ANGLE (float)3.0 / (float)30.0
@@ -29,6 +32,8 @@ struct Vect3 cameraAngle = {0, 180, 0};
 const float radians = PI / 180.0;
 
 int lastFrame; //TimeStamp to the last frame
+
+bool sun = true, light = true;
 
 //Lights definition
 GLfloat light1_position[] = { 1, 1, 0, 0.0 }; //Directional Light (SUN)
@@ -148,21 +153,37 @@ void drawCar() {
 	//printf("Car Position: %f %f %f Car Rotation: %f %f %f\n", car.position.x, car.position.y, car.position.z, car.rotation.x, car.rotation.y, car.rotation.z);
 	glPushMatrix();
 		applyTransformations(&car);
-		// glLightfv(GL_LIGHT1, GL_POSITION, light3_position);
-		// glLightfv(GL_LIGHT2, GL_POSITION, light2_position);
+		glLightfv(GL_LIGHT1, GL_POSITION, light3_position);
+		glLightfv(GL_LIGHT2, GL_POSITION, light2_position);
 		drawObj(&car);
 		drawTires();
 	glPopMatrix();
 }
 
-void reshape( int w, int h ) {
+void reshape( int width, int height ) {
+	int x, y, w, h;
+    double ratio;
+
+    ratio = (double)width / height;
+    if (ratio > VIEWPORT_RATIO) {
+        w = (int)((double)height * VIEWPORT_RATIO);
+        h = height;
+        x = (width - w) / 2;
+        y = 0;
+    }
+    else {
+        w = width;
+        h = (int)((double)width / VIEWPORT_RATIO);
+        x = 0;
+        y = (height - h) / 2;
+    }
     // Change the viewport
-    glViewport( 0, 0, w, h );
+	glViewport(x, y, w, h);
     // Change the proyection matrix
     glMatrixMode( GL_PROJECTION );
     glLoadIdentity( );
     // Applies the perspective proyection
-    gluPerspective( 48.5, (GLfloat) w/ (GLfloat) h, 0.1, 1000 );
+	gluPerspective(VIEWPORT_ASPECT, VIEWPORT_RATIO, 0.01, 10000.0);
     // Change the Modelview matrix
     glMatrixMode( GL_MODELVIEW );
 }
@@ -173,7 +194,7 @@ void display() {
 	
 	updateCamera();
 
-	//glLightfv(GL_LIGHT0, GL_POSITION, light1_position);
+	glLightfv(GL_LIGHT0, GL_POSITION, light1_position);
 
 	drawCar();
 	drawScene();
@@ -277,6 +298,29 @@ void keyboardFunc(char key, int x, int y){
 	if (key == 'q' || key == 'Q') {
 		exit(0);
 	}
+	
+	if(key == 's' || key == 'S') {
+		if(sun)
+			glDisable(GL_LIGHT0);
+		else
+			glEnable(GL_LIGHT0);
+
+		sun = (sun + 1) % 2;
+	}
+	
+	if(key == 'l' || key == 'L') {
+		if(light){
+			glDisable(GL_LIGHT1);
+			glDisable(GL_LIGHT2);
+		}
+		else{
+			glEnable(GL_LIGHT1);
+			glEnable(GL_LIGHT2);
+		}
+
+		light = (light + 1) % 2;
+	}
+
 
 }
 
@@ -320,6 +364,20 @@ void loadAssets(){
 	loadMeshes();
 }
 
+void printDescription() {
+	printf("In this program you can control the car among the different objects and you can turn the lights\n");
+	printf("=======================================================\n");
+	printf("Controls\n");
+	printf("=======================================================\n");
+	printf("=======================================================\n");
+	printf("Use the arrows to move the car\n");
+	printf("Q to quit the program\n");
+	printf("S to turn on/off the sun light\n");
+	printf("L to turn on/off the car lights\n");
+	printf("=======================================================\n");
+	printf("=======================================================\n");
+}
+
 void init() {
 
 	//Init window and display mode
@@ -338,15 +396,24 @@ void init() {
 	
 	//Set Lights
     glLightfv(GL_LIGHT0, GL_AMBIENT, light1_ambient);
+	glLightfv(GL_LIGHT0, GL_DIFFUSE, light1_diffuse);
+	glLightfv(GL_LIGHT1, GL_DIFFUSE, light2_diffuse);
+	glLightfv(GL_LIGHT2, GL_DIFFUSE, light3_diffuse);
 
 	glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
-   
+	glEnable(GL_LIGHT1);
+    glEnable(GL_LIGHT2);
+    glLightf(GL_LIGHT1, GL_LINEAR_ATTENUATION, 0.2);
+    glLightf(GL_LIGHT2, GL_LINEAR_ATTENUATION, 0.2);
+	
 	loadAssets();
 
 	setTargetAndParameters(&car, cameraDistanceFromModel, cameraAngle, true);
 
 	initGlutCallBacks();
+	
+	printDescription();
 }
 
 int main(int argc, char const *argv[]) {
